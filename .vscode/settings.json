@@ -1,0 +1,27 @@
+{
+  // このフォルダ (30_note) をワークスペースのルートとして開くことを前提にしている。
+  // フォルダごと別PCへコピーしても、そのまま同じ設定で動く。
+
+  // ---- TaskChute / デイリーノート -------------------------------------
+  // パスはすべてこのフォルダからの相対
+  "taskchute.rootFolder": "",
+  "taskchute.dataFolder": ".taskchute",
+  "taskchute.dailyNote.folder": "20_daily",
+  "taskchute.dailyNote.format": "YYYY/MM/DD",
+  "taskchute.dailyNote.template": "80_tamplate/Daily.md",
+  "taskchute.dailyNote.useDefaultEditor": true,
+
+  // ---- ノートとして使いやすくする --------------------------------------
+  "editor.wordWrap": "on",
+  "editor.renderWhitespace": "none",
+  "explorer.sortOrder": "type",
+  "explorer.compactFolders": false,
+  "files.trimTrailingWhitespace": false,
+
+  // ---- 検索から外す ----------------------------------------------------
+  "search.exclude": {
+    ".taskchute/days": true,
+    "tools/**/node_modules": true
+  },
+  "search.useIgnoreFiles": false
+}

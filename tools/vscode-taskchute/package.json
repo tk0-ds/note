@@ -1,0 +1,77 @@
+{
+  "name": "taskchute-vscode",
+  "displayName": "TaskChute for VS Code",
+  "description": "TaskChute-style task management and daily notes inside VS Code",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "UNLICENSED",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Notebooks", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "taskchute.open", "title": "Open panel", "category": "TaskChute" },
+      { "command": "taskchute.openDailyNote", "title": "Open today's daily note", "category": "TaskChute" },
+      { "command": "taskchute.openPrevDailyNote", "title": "Open previous daily note", "category": "TaskChute" },
+      { "command": "taskchute.openNextDailyNote", "title": "Open next daily note", "category": "TaskChute" },
+      { "command": "taskchute.openDailyNoteByDate", "title": "Open daily note by date", "category": "TaskChute" },
+      { "command": "taskchute.quickAddTask", "title": "Quick add task", "category": "TaskChute" },
+      { "command": "taskchute.importIcs", "title": "Import events from an ICS file", "category": "TaskChute" },
+      { "command": "taskchute.openConfig", "title": "Open config.json", "category": "TaskChute" },
+      { "command": "taskchute.rebuildNameIndex", "title": "Rebuild the past task name index", "category": "TaskChute" }
+    ],
+    "keybindings": [
+      { "command": "taskchute.open", "key": "ctrl+alt+t" },
+      { "command": "taskchute.openDailyNote", "key": "ctrl+alt+d" },
+      { "command": "taskchute.openPrevDailyNote", "key": "ctrl+alt+," },
+      { "command": "taskchute.openNextDailyNote", "key": "ctrl+alt+." },
+      { "command": "taskchute.quickAddTask", "key": "ctrl+alt+a" }
+    ],
+    "configuration": {
+      "title": "TaskChute",
+      "properties": {
+        "taskchute.rootFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Root of the notes environment. Empty means the first workspace folder."
+        },
+        "taskchute.dataFolder": {
+          "type": "string",
+          "default": ".taskchute",
+          "description": "Folder for task data and settings, relative to the root."
+        },
+        "taskchute.dailyNote.folder": {
+          "type": "string",
+          "default": "20_daily",
+          "description": "Folder for daily notes, relative to the root."
+        },
+        "taskchute.dailyNote.format": {
+          "type": "string",
+          "default": "YYYY/MM/DD",
+          "description": "Path format for daily notes. YYYY MM DD HH mm ddd are available."
+        },
+        "taskchute.dailyNote.template": {
+          "type": "string",
+          "default": "80_tamplate/Daily.md",
+          "description": "Template for daily notes, relative to the root."
+        },
+        "taskchute.dailyNote.useDefaultEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open daily notes with the default editor (e.g. ManulDown). false uses the plain text editor."
+        },
+        "taskchute.taskNote.folder": {
+          "type": "string",
+          "default": "notes",
+          "description": "Folder for task notes (.md), relative to the root."
+        },
+        "taskchute.taskNote.templateFolder": {
+          "type": "string",
+          "default": "80_tamplate/task",
+          "description": "Folder holding task note templates. Every .md here becomes a choice."
+        }
+      }
+    }
+  }
+}

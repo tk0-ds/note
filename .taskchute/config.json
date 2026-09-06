@@ -1,0 +1,66 @@
+{
+  "//": "TaskChute for VS Code の設定ファイル。編集したらパネルの「再読込」を押す",
+
+  "//sections": "節 (時間帯)。A〜L まで最大12個。生活に合わせて自由に変えてよい",
+  "sections": [
+    { "key": "A", "label": "Early", "start": "06:00", "end": "08:00" },
+    { "key": "B", "label": "Morning", "start": "08:00", "end": "12:00" },
+    { "key": "C", "label": "Noon", "start": "12:00", "end": "13:00" },
+    { "key": "D", "label": "Afternoon", "start": "13:00", "end": "17:00" },
+    { "key": "E", "label": "Evening", "start": "17:00", "end": "19:00" },
+    { "key": "F", "label": "Night", "start": "19:00", "end": "22:00" },
+    { "key": "G", "label": "Late", "start": "22:00", "end": "24:00" }
+  ],
+
+  "//projects": "Project 欄の候補。案件名でも分類ラベルでもよい",
+  "projects": ["Manage", "Life", "Work", "学習", "Divider"],
+
+  "//modes": "Mode 欄の候補と色。Project とは別の切り口でタスクを分類する",
+  "modes": [
+    { "name": "Focus", "color": "#ffd6d6", "textColor": "#8a1c1c" },
+    { "name": "Routine", "color": "#e2eefc", "textColor": "#1c467d" },
+    { "name": "Comm", "color": "#e6f6e0", "textColor": "#245c18" },
+    { "name": "Input", "color": "#f3e8fd", "textColor": "#5b2a86" },
+    { "name": "Move", "color": "#fdf0dc", "textColor": "#7a4b10" },
+    { "name": "Rest", "color": "#eeeeee", "textColor": "#555555" }
+  ],
+
+  "//dividerProject": "この Project 名のタスクは「区切り」として扱う。節内ソート順に 1300 のように時刻を入れておくと、その時刻を過ぎた状態で通常/全力の並べ替えをすると翌日へ送られる",
+  "dividerProject": "Divider",
+
+  "//calendarProject": "ICS から取り込んだ予定に付ける Project 名",
+  "calendarProject": "Event",
+
+  "//idleTaskName": "使途不明時間を埋めるためのタスク名",
+  "idleTaskName": "Idling",
+
+  "view": {
+    "//pastDays": "画面に読み込む過去の日数 (積み残しを拾う範囲)",
+    "pastDays": 7,
+    "//futureDays": "画面に読み込む先の日数",
+    "futureDays": 10,
+    "//forecastDays": "ヘッダに出す日別見積サマリーの日数",
+    "forecastDays": 10
+  },
+
+  "//columns": "列の表示と幅。visible を false にすると隠れる (バックスラッシュキーで一時的に全部出せる)。width の単位は px。並び順はここでは変わらない",
+  "columns": {
+    "status": { "label": "□", "visible": true, "width": 26 },
+    "date": { "label": "Date", "visible": true, "width": 74 },
+    "due": { "label": "Due", "visible": true, "width": 74 },
+    "section": { "label": "Sec", "visible": true, "width": 34 },
+    "no": { "label": "#", "visible": false, "width": 40 },
+    "star": { "label": "★", "visible": true, "width": 24 },
+    "project": { "label": "Project", "visible": true, "width": 76 },
+    "mode": { "label": "Mode", "visible": true, "width": 70 },
+    "name": { "label": "Task", "visible": true, "width": 240 },
+    "memo": { "label": "Note", "visible": true, "width": 34 },
+    "estimate": { "label": "Est", "visible": true, "width": 44 },
+    "actual": { "label": "Act", "visible": true, "width": 44 },
+    "start": { "label": "Start", "visible": true, "width": 46 },
+    "end": { "label": "End", "visible": true, "width": 46 },
+    "sectionSort": { "label": "Order", "visible": false, "width": 48 },
+    "hint": { "label": "Hint", "visible": false, "width": 180 },
+    "comment": { "label": "Comment", "visible": false, "width": 180 }
+  }
+}
