@@ -8,7 +8,7 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
 
-const files = ['model.test.js', 'panel.test.js'];
+const files = ['model.test.js', 'panel.test.js', 'activate.test.js'];
 let failed = 0;
 
 console.log('TaskChute for VS Code - 動作確認');

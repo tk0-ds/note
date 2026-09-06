@@ -126,6 +126,46 @@ function Find-ByMarker {
   return $null
 }
 
+<#
+  VS Code のバージョンが package.json の engines を満たすか調べる。
+  古すぎると VS Code は拡張機能を黙って読み込まないので、
+  「入れたのに command not found」の原因になる。
+#>
+function Test-CodeVersion {
+  $result = @{ Installed = $null; Required = $null; Ok = $true; Known = $false }
+
+  $pkgPath = Join-Path $src 'package.json'
+  if (Test-Path $pkgPath) {
+    $raw = Get-Content $pkgPath -Raw
+    if ($raw -match '"vscode"\s*:\s*"\^?([0-9]+)\.([0-9]+)\.([0-9]+)"') {
+      $result.Required = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
+      $reqMajor = [int]$Matches[1]; $reqMinor = [int]$Matches[2]
+    }
+  }
+
+  $cmd = Get-Command code -ErrorAction SilentlyContinue
+  if ($cmd -and $result.Required) {
+    $v = & $cmd.Source --version 2>$null | Select-Object -First 1
+    if ($v -and $v -match '^([0-9]+)\.([0-9]+)\.([0-9]+)') {
+      $result.Installed = $v.Trim()
+      $result.Known = $true
+      $curMajor = [int]$Matches[1]; $curMinor = [int]$Matches[2]
+      $result.Ok = ($curMajor -gt $reqMajor) -or (($curMajor -eq $reqMajor) -and ($curMinor -ge $reqMinor))
+    }
+  }
+  return $result
+}
+
+<# 他の候補フォルダに入れ残しがないか #>
+function Find-StaleInstalls($cands, $keep) {
+  $stale = @()
+  foreach ($c in $cands) {
+    $other = Join-Path $c.Path $name
+    if ((Test-Path $other) -and ($other -ne $keep)) { $stale += $other }
+  }
+  return $stale
+}
+
 Write-Host ''
 Write-Host 'TaskChute for VS Code'
 Write-Host ('=' * 62)
@@ -162,12 +202,27 @@ if ($ExtensionsDir) {
   }
 }
 
+$dstPreview = Join-Path $chosen $name
+
 if ($ShowPaths) {
   Write-Host ''
   $cmd = Get-Command code -ErrorAction SilentlyContinue
   if ($cmd) { Write-Step "code コマンド: $($cmd.Source)" } else { Write-Step 'code コマンド: 見つかりません (PATH に無い)' }
   $root = Resolve-CodeRoot
   if ($root) { Write-Step "本体フォルダ : $root" }
+
+  $ver = Test-CodeVersion
+  if ($ver.Known) {
+    if ($ver.Ok) {
+      Write-Step "VS Code     : $($ver.Installed)  (必要 $($ver.Required) 以上 / OK)"
+    } else {
+      Write-Step "VS Code     : $($ver.Installed)  ★必要 $($ver.Required) 以上"
+      Write-Step '              古すぎるため、VS Code は拡張機能を読み込みません。'
+      Write-Step '              これが command not found の原因です。VS Code を更新してください。'
+    }
+  } else {
+    Write-Step 'VS Code     : バージョンを確認できませんでした'
+  }
   Write-Host ''
   Write-Host '  拡張機能フォルダの候補:'
   Write-Host '    [使用中] = extensions.json などがあり、VS Code が実際に使っている'
@@ -188,6 +243,21 @@ if ($ShowPaths) {
     Write-Host '       VS Code の「拡張機能」画面で何か入っているのに 0 個なら、'
     Write-Host '       -ExtensionsDir で正しいパスを指定してください。'
   }
+
+  $stale = Find-StaleInstalls $cands $dstPreview
+  if ($stale.Count -gt 0) {
+    Write-Host ''
+    Write-Host '  別の場所に入れ残しがあります (-Uninstall で掃除できます):'
+    foreach ($x in $stale) { Write-Host "    $x" }
+  }
+
+  $installed = Join-Path $chosen $name
+  Write-Host ''
+  if (Test-Path $installed) {
+    Write-Host "  この場所には既にインストール済み: $installed"
+  } else {
+    Write-Host '  この場所にはまだ入っていません。-ShowPaths を外して実行してください。'
+  }
   Write-Host ''
   exit 0
 }
@@ -201,6 +271,11 @@ Write-Step "入れ先の根拠 : $chosenWhy"
 if (-not $ExtensionsDir -and -not (Test-ExtensionsDir $chosen)) {
   Write-Step '注意: この場所に VS Code の使用中の形跡がありません。'
   Write-Step '      入れても認識されない場合は -ShowPaths で確認してください。'
+}
+$ver = Test-CodeVersion
+if ($ver.Known -and -not $ver.Ok) {
+  Write-Step "★注意: VS Code $($ver.Installed) は古すぎます (必要 $($ver.Required) 以上)。"
+  Write-Step '        このままでは読み込まれません。VS Code を更新してください。'
 }
 Write-Host ''
 
