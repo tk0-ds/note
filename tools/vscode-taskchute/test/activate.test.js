@@ -62,8 +62,24 @@ ok('activate() が例外を投げない', () => {
   ext.activate(ctx);
 });
 
-const pkg = JSON.parse(fs.readFileSync(EXT + '/package.json', 'utf8'));
+const pkgRaw = fs.readFileSync(EXT + '/package.json');
+
+ok('package.json に BOM が付いていない', () => {
+  // BOM があると JSON.parse も VS Code のマニフェスト読み込みも失敗し、
+  // 拡張機能ごと読み込まれなくなる (command not found になる)
+  const bom = pkgRaw[0] === 0xef && pkgRaw[1] === 0xbb && pkgRaw[2] === 0xbf;
+  assert.strictEqual(bom, false, 'package.json の先頭に BOM がある');
+});
+
+const pkg = JSON.parse(pkgRaw.toString('utf8'));
 const declared = pkg.contributes.commands.map((c) => c.command);
+
+ok('engines.vscode が緩すぎず厳しすぎない', () => {
+  const m = /^\^?(\d+)\.(\d+)\./.exec(pkg.engines.vscode);
+  assert.ok(m, 'engines.vscode の書式: ' + pkg.engines.vscode);
+  const minor = Number(m[2]);
+  assert.ok(minor <= 70, `engines.vscode が新しすぎる (${pkg.engines.vscode})。古い VS Code で読み込まれなくなる`);
+});
 
 ok('package.json の全コマンドが登録される', () => {
   const missing = declared.filter((c) => !registered.includes(c));
