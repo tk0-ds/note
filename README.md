@@ -93,13 +93,52 @@ git pull
   ネット越しに受け取った場合は、展開後に一度
   `powershell -Command "Get-ChildItem -Recurse | Unblock-File"` を実行してください
 
+### 拡張機能がどこに入るか
+
+VS Code の入れ方によって、拡張機能の置き場所が変わります。`install.ps1` は
+**自動で判別**しますが、うまくいかないときは判断の中身を見せられます。
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./install.ps1 -ShowPaths
+```
+
+候補を上から順に探し、**最初に見つかった実在するフォルダ**を使います。
+
+| 優先 | 場所 | どんなとき |
+| --- | --- | --- |
+| 1 | `%VSCODE_EXTENSIONS%` | 環境変数で明示している |
+| 2 | `%VSCODE_PORTABLE%\extensions` | ポータブル構成 |
+| 3 | `<VS Code 本体>\data\extensions` | ポータブル構成 (本体の隣に `data` がある) |
+| 4 | `~\scoop\persist\vscode\data\extensions` | **Scoop で入れた場合** |
+| 5 | `~\scoop\apps\vscode\current\data\extensions` | Scoop (persist なし) |
+| 6 | `~\.vscode\extensions` | 標準のインストーラ版 |
+
+**Scoop で入れた VS Code は要注意です。** ポータブル構成になるため、標準の
+`~\.vscode\extensions` に置いても VS Code は読みません。「インストールしたのに
+拡張機能が動かない」ときは、まずここを疑ってください。
+
+上の判別で 4 か 5 が選ばれるはずですが、`-ShowPaths` の結果が想定と違うときは
+明示できます。
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./install.ps1 -ExtensionsDir "C:\Users\<名前>\scoop\persist\vscode\data\extensions"
+```
+
+正しい場所は、VS Code 自身に聞くのが確実です。既に入っている拡張機能が
+並んでいるフォルダが正解です。
+
+```bash
+code --list-extensions
+```
+
 `install.ps1` の補足:
 
 | 状況 | やること |
 | --- | --- |
-| 会社PCでジャンクション (フォルダの別名) が作れない | 自動でコピーに切り替わる。明示するなら `-Copy` |
-| VS Code の拡張機能フォルダが標準の場所にない | `-ExtensionsDir "D:\...\extensions"` を付ける |
-| 取り除きたい | `-Uninstall` を付ける |
+| どこに入るか確認したい | `-ShowPaths` を付ける (入れずに表示だけ) |
+| ジャンクション (フォルダの別名) が作れない | 自動でコピーに切り替わる。明示するなら `-Copy` |
+| 入れ先を指定したい | `-ExtensionsDir "D:\...\extensions"` を付ける |
+| 取り除きたい | `-Uninstall` を付ける (間違って別の場所に入れた分も掃除します) |
 
 `-Copy` で入れた場合は、ソースを直すたびに `install.ps1` を実行し直してください。
 ジャンクションで入っていれば、ソースを直して VS Code を再読み込みするだけで反映されます。
