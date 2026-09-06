@@ -124,12 +124,24 @@ powershell -ExecutionPolicy Bypass -File ./install.ps1 -ShowPaths
 powershell -ExecutionPolicy Bypass -File ./install.ps1 -ExtensionsDir "C:\Users\<名前>\scoop\persist\vscode\data\extensions"
 ```
 
-正しい場所は、VS Code 自身に聞くのが確実です。既に入っている拡張機能が
-並んでいるフォルダが正解です。
+**`code --list-extensions` では場所は分かりません。** 拡張機能の ID が並ぶだけです。
+
+場所の決め手は、VS Code が拡張機能フォルダに置く `extensions.json` と `.obsolete`
+というファイルです。`-ShowPaths` はこれを探して `[使用中]` と表示します。
+`[使用中]` が付いた場所が正解で、そこに入っている拡張機能の数も出ます。
+
+自分で探すなら、この2つのどちらかで見つかります。
 
 ```bash
-code --list-extensions
+powershell -Command "Get-ChildItem $env:USERPROFILE -Filter extensions.json -Recurse -Depth 6 -ErrorAction SilentlyContinue | Select-Object -Expand DirectoryName"
 ```
+
+```bash
+code --status
+```
+
+`--status` はプロセス一覧に拡張機能の実行ファイルの絶対パスが出ることがあります
+(その拡張機能が別プロセスを立てている場合のみ)。
 
 `install.ps1` の補足:
 

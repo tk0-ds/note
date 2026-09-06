@@ -5,11 +5,10 @@
       powershell -ExecutionPolicy Bypass -File ./install.ps1
 
   オプション:
-      -ShowPaths       どこに入れるかだけ表示して終了する (調査用)
+      -ShowPaths       どこに入れるかだけ調べて表示する (インストールしない)
       -Copy            ジャンクション (フォルダの別名) ではなく、実体コピーで入れる
       -Uninstall       入れたものを取り除く
-      -ExtensionsDir   VS Code の拡張機能フォルダを明示する
-                       (省略時は自動判別。下の Resolve-ExtensionsDir を参照)
+      -ExtensionsDir   VS Code の拡張機能フォルダを明示する (省略時は自動判別)
 
   このスクリプトが触るのは VS Code の拡張機能フォルダだけで、
   ノートやタスクのデータには一切手を入れない。
@@ -28,6 +27,25 @@ $name = 'local.taskchute-vscode-0.1.0'
 $src = Join-Path $PSScriptRoot 'tools\vscode-taskchute'
 
 function Write-Step($msg) { Write-Host "  $msg" }
+
+<#
+  そのフォルダが「VS Code が実際に使っている拡張機能フォルダ」かを判定する。
+
+  VS Code は拡張機能フォルダに extensions.json (導入済み一覧) と
+  .obsolete を置く。これが決定的な目印になる。
+  code --list-extensions は ID を並べるだけで場所を教えてくれないため、
+  ファイルの痕跡から見つけるのが確実。
+#>
+function Test-ExtensionsDir($path) {
+  if (-not $path) { return $false }
+  if (-not (Test-Path $path)) { return $false }
+  if (Test-Path (Join-Path $path 'extensions.json')) { return $true }
+  if (Test-Path (Join-Path $path '.obsolete')) { return $true }
+  # publisher.name-version という形のフォルダがあれば拡張機能フォルダとみなす
+  $like = Get-ChildItem -Path $path -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^[^.]+\.[^.]+.*-\d' } | Select-Object -First 1
+  return [bool]$like
+}
 
 <#
   code コマンドの実体から VS Code の本体フォルダを割り出す。
@@ -52,31 +70,60 @@ function Resolve-CodeRoot {
   return $parent
 }
 
-<#
-  拡張機能フォルダを決める。
-  Scoop や -portable で入れた VS Code は「ポータブル構成」になり、
-  本体の隣の data\extensions を見る。標準の場所に入れても読まれない。
-#>
-function Resolve-ExtensionsDir {
-  $cands = @()
+<# 探す順に候補を並べる #>
+function Get-Candidates {
+  $c = @()
 
   if ($env:VSCODE_EXTENSIONS) {
-    $cands += ,@{ Path = $env:VSCODE_EXTENSIONS; Why = '環境変数 VSCODE_EXTENSIONS' }
+    $c += ,@{ Path = $env:VSCODE_EXTENSIONS; Why = '環境変数 VSCODE_EXTENSIONS' }
   }
   if ($env:VSCODE_PORTABLE) {
-    $cands += ,@{ Path = (Join-Path $env:VSCODE_PORTABLE 'extensions'); Why = '環境変数 VSCODE_PORTABLE' }
+    $c += ,@{ Path = (Join-Path $env:VSCODE_PORTABLE 'extensions'); Why = '環境変数 VSCODE_PORTABLE' }
+  }
+
+  # Scoop に本体の場所を聞く (一番確か)。
+  # vscode を scoop で入れていない環境ではエラー文が返るので、
+  # 実在するパスが返ってきたときだけ候補にする。
+  if (Get-Command scoop -ErrorAction SilentlyContinue) {
+    try {
+      $out = & scoop prefix vscode *>&1
+      $line = $out | Where-Object { $_ -is [string] -and (Test-Path $_.Trim()) } | Select-Object -First 1
+      if ($line) {
+        $c += ,@{ Path = (Join-Path $line.Trim() 'data\extensions'); Why = 'scoop prefix vscode' }
+      }
+    } catch { }
   }
 
   $root = Resolve-CodeRoot
   if ($root) {
-    $cands += ,@{ Path = (Join-Path $root 'data\extensions'); Why = "ポータブル構成 ($root)" }
+    $c += ,@{ Path = (Join-Path $root 'data\extensions'); Why = "ポータブル構成 ($root)" }
   }
 
-  $cands += ,@{ Path = (Join-Path $env:USERPROFILE 'scoop\persist\vscode\data\extensions'); Why = 'Scoop の persist フォルダ' }
-  $cands += ,@{ Path = (Join-Path $env:USERPROFILE 'scoop\apps\vscode\current\data\extensions'); Why = 'Scoop の apps フォルダ' }
-  $cands += ,@{ Path = (Join-Path $env:USERPROFILE '.vscode\extensions'); Why = '標準の場所' }
+  $c += ,@{ Path = (Join-Path $env:USERPROFILE 'scoop\persist\vscode\data\extensions'); Why = 'Scoop の persist フォルダ' }
+  $c += ,@{ Path = (Join-Path $env:USERPROFILE 'scoop\apps\vscode\current\data\extensions'); Why = 'Scoop の apps フォルダ' }
+  $c += ,@{ Path = (Join-Path $env:USERPROFILE '.vscode\extensions'); Why = '標準の場所' }
+  return $c
+}
 
-  return $cands
+<#
+  候補が全部外れたときの最後の手段。
+  extensions.json を手掛かりに、範囲を絞って探す。
+#>
+function Find-ByMarker {
+  $roots = @(
+    (Join-Path $env:USERPROFILE 'scoop\persist'),
+    (Join-Path $env:USERPROFILE 'scoop\apps'),
+    (Resolve-CodeRoot),
+    (Join-Path $env:USERPROFILE '.vscode-insiders'),
+    (Join-Path $env:APPDATA 'Code')
+  ) | Where-Object { $_ -and (Test-Path $_) }
+
+  foreach ($r in $roots) {
+    $hit = Get-ChildItem -Path $r -Filter 'extensions.json' -Recurse -Depth 5 -File -ErrorAction SilentlyContinue |
+      Select-Object -First 1
+    if ($hit) { return $hit.DirectoryName }
+  }
+  return $null
 }
 
 Write-Host ''
@@ -84,7 +131,7 @@ Write-Host 'TaskChute for VS Code'
 Write-Host ('=' * 62)
 
 # ---- 入れ先を決める -------------------------------------------------------
-$cands = Resolve-ExtensionsDir
+$cands = Get-Candidates
 $chosen = $null
 $chosenWhy = ''
 
@@ -92,38 +139,55 @@ if ($ExtensionsDir) {
   $chosen = $ExtensionsDir
   $chosenWhy = '-ExtensionsDir で指定'
 } else {
-  # 既に存在しているものを優先する。VS Code が実際に使っている場所には
-  # 他の拡張機能が入っているはずなので、それが一番確かな手がかりになる。
+  # 1) VS Code が実際に使っている形跡があるものを最優先
   foreach ($c in $cands) {
-    if (Test-Path $c.Path) { $chosen = $c.Path; $chosenWhy = $c.Why; break }
+    if (Test-ExtensionsDir $c.Path) { $chosen = $c.Path; $chosenWhy = $c.Why + ' / 使用中の形跡あり'; break }
   }
+  # 2) 形跡は無いが存在はするもの
+  if (-not $chosen) {
+    foreach ($c in $cands) {
+      if (Test-Path $c.Path) { $chosen = $c.Path; $chosenWhy = $c.Why + ' / フォルダは存在'; break }
+    }
+  }
+  # 3) 範囲を絞って探す
+  if (-not $chosen) {
+    $found = Find-ByMarker
+    if ($found) { $chosen = $found; $chosenWhy = 'extensions.json を探して発見' }
+  }
+  # 4) それでも駄目なら標準の場所に作る
   if (-not $chosen) {
     $last = $cands[$cands.Count - 1]
     $chosen = $last.Path
-    $chosenWhy = $last.Why + ' (候補がどれも無いので既定)'
+    $chosenWhy = $last.Why + ' / 手掛かりが無いので既定'
   }
 }
 
 if ($ShowPaths) {
   Write-Host ''
-  Write-Host '  code コマンド:'
   $cmd = Get-Command code -ErrorAction SilentlyContinue
-  if ($cmd) { Write-Step "  $($cmd.Source)" } else { Write-Step '  見つかりません (PATH に code がない)' }
+  if ($cmd) { Write-Step "code コマンド: $($cmd.Source)" } else { Write-Step 'code コマンド: 見つかりません (PATH に無い)' }
   $root = Resolve-CodeRoot
-  if ($root) { Write-Step "  本体フォルダ: $root" }
+  if ($root) { Write-Step "本体フォルダ : $root" }
   Write-Host ''
-  Write-Host '  拡張機能フォルダの候補 (上から順に探し、最初に見つかったものを使う):'
+  Write-Host '  拡張機能フォルダの候補:'
+  Write-Host '    [使用中] = extensions.json などがあり、VS Code が実際に使っている'
+  Write-Host ''
   foreach ($c in $cands) {
-    $mark = if (Test-Path $c.Path) { '[あり]' } else { '[なし]' }
+    $mark = if (Test-ExtensionsDir $c.Path) { '[使用中]' } elseif (Test-Path $c.Path) { '[空あり]' } else { '[  なし]' }
     Write-Host ("    {0} {1}" -f $mark, $c.Path)
-    Write-Host ("           {0}" -f $c.Why)
+    Write-Host ("             {0}" -f $c.Why)
   }
   Write-Host ''
   Write-Host "  => 使う場所: $chosen"
   Write-Host "     根拠    : $chosenWhy"
-  Write-Host ''
-  Write-Host '  この場所で合っていれば、-ShowPaths を外して実行してください。'
-  Write-Host '  違っていれば -ExtensionsDir "正しいパス" を付けてください。'
+  if (Test-ExtensionsDir $chosen) {
+    $n = (Get-ChildItem -Path $chosen -Directory -ErrorAction SilentlyContinue).Count
+    Write-Host "     この場所に入っている拡張機能: $n 個"
+  } else {
+    Write-Host '     ★ 使用中の形跡がありません。場所が違う可能性があります。'
+    Write-Host '       VS Code の「拡張機能」画面で何か入っているのに 0 個なら、'
+    Write-Host '       -ExtensionsDir で正しいパスを指定してください。'
+  }
   Write-Host ''
   exit 0
 }
@@ -134,6 +198,10 @@ Write-Step "環境フォルダ : $PSScriptRoot"
 Write-Step "拡張機能の元 : $src"
 Write-Step "入れ先       : $dst"
 Write-Step "入れ先の根拠 : $chosenWhy"
+if (-not $ExtensionsDir -and -not (Test-ExtensionsDir $chosen)) {
+  Write-Step '注意: この場所に VS Code の使用中の形跡がありません。'
+  Write-Step '      入れても認識されない場合は -ShowPaths で確認してください。'
+}
 Write-Host ''
 
 # ---- 既存を取り除く -------------------------------------------------------
@@ -198,7 +266,7 @@ if ($code) {
     Write-Step 'VS Code が拡張機能を認識した'
   } else {
     Write-Step 'VS Code はまだ認識していない (再起動すれば読み込まれる)'
-    Write-Step 'それでも認識しない場合は -ShowPaths で入れ先を確認してください'
+    Write-Step '再起動しても駄目なら -ShowPaths で入れ先を確認してください'
   }
 }
 
