@@ -26,7 +26,7 @@ media/
 環境フォルダ (`30_note`) の直下にある `install.ps1` が入れてくれる。
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ..\..\install.ps1
+powershell -ExecutionPolicy Bypass -File ../../install.ps1
 ```
 
 `%USERPROFILE%\.vscode\extensions\local.taskchute-vscode-0.1.0` から、このフォルダへ

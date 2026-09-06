@@ -49,8 +49,15 @@ node tools/vscode-taskchute/test/run.js
 「すべて成功」と出たら、拡張機能を入れます。
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+powershell -ExecutionPolicy Bypass -File ./install.ps1
 ```
+
+**パスは `./` (スラッシュ) で書いてください。** `.\` (バックスラッシュ) だと Git Bash が
+記号を食べてしまい「引数が存在しません」で失敗します。VS Code の既定ターミナルが
+Git Bash の場合はこれを踏みます。
+
+また、このスクリプトの表示は日本語なので、**PowerShell ターミナルで実行すると読めます**
+(Git Bash だと文字化けします。動作自体は問題ありません)。
 
 VS Code を再起動し、このフォルダを開いて `Ctrl+Alt+T`。
 
